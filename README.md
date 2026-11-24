@@ -1,33 +1,79 @@
 # vault-secrets-cli
 
-Resolves `vault(path#key)` references from a single OCD3 instance definition into a Docker Compose `env_file` under `/var/run`.
+Resolves `vault(path#key)` references from an OCD3 instance definition into a Docker Compose `env_file` (typically under `/run/ocd3/<name>/secrets.env`).
+
+## Setup
+
+Example instance definitions live in the OCD3 GitOps repository. Clone it so the examples below can mount a local instance JSON:
 
 ## Usage
 
+Pass Vault env vars into the container and mount the instance JSON plus an output directory:
+
 ```bash
-vault-secrets-cli resolve --instance /path/to/instance.json [--output /var/run/ocd3/<name>/secrets.env]
-vault-secrets-cli resolve --instance-json '{"name":"...","envVars":{...}}' [--output ...]
+export VAULT_ADDR=https://vault.example.com
+export VAULT_AUTH_METHOD=token
+export VAULT_TOKEN=hvs.your-token-here
+
+docker run --rm \
+  -e VAULT_ADDR \
+  -e VAULT_AUTH_METHOD \
+  -e VAULT_TOKEN \
+  -v "$(pwd)/instances/dev/oz-c2c-dev.json:/instance.json:ro" \
+  -v "$(pwd):/out" \
+  mekomsolutions/vault-secrets-cli \
+  resolve --instance /instance.json --output /out/.env
 ```
 
-Exactly one of `--instance` or `--instance-json` is required.
+### AppRole
 
-## Auth
+```bash
+export VAULT_ADDR=https://vault.example.com
+export VAULT_AUTH_METHOD=approle
+export VAULT_ROLE_ID=...
+export VAULT_SECRET_ID=...
+# optional: export VAULT_APPROLE_PATH=approle
 
-| Mode | When |
-|---|---|
-| AppRole (default) | `VAULT_ROLE_ID` and `VAULT_SECRET_ID` set |
-| Token | `VAULT_AUTH_METHOD=token`, or AppRole ids missing but `VAULT_TOKEN` set |
+docker run --rm \
+  -e VAULT_ADDR \
+  -e VAULT_AUTH_METHOD \
+  -e VAULT_ROLE_ID \
+  -e VAULT_SECRET_ID \
+  -e VAULT_APPROLE_PATH \
+  -v "$(pwd)/instances/dev/oz-c2c-dev.json:/instance.json:ro" \
+  -v "$(pwd)/out:/out" \
+  mekomsolutions/vault-secrets-cli \
+  resolve --instance /instance.json --output /out/secrets.env
+```
 
-Logical paths omit KV v2 `data/` (e.g. `secret/c2c/dev`). The role needs `read` on `secret/data/...` and `secret/metadata/...`.
+### Inline instance JSON
+
+```bash
+docker run --rm \
+  -e VAULT_ADDR \
+  -e VAULT_AUTH_METHOD \
+  -e VAULT_TOKEN \
+  -v "$(pwd)/out:/out" \
+  mekomsolutions/vault-secrets-cli \
+  resolve --instance-json '{"name":"demo","envVars":{"DB_PASSWORD":"vault(secret/c2c/dev#db_password)"}}' \
+  --output /out/secrets.env
+```
 
 ## Build
 
 ```bash
-# Tests + Docker image (Java 11 for the Gradle wrapper)
-./gradlew build
+# Run tests locally (optional)
+npm install
+npm test
 
-# Or Docker only
+# Build the image
 docker build -t mekomsolutions/vault-secrets-cli .
 ```
 
-CI builds on every push/PR (`.github/workflows/build.yaml`). On `main`/`master`, Publish pushes `mekomsolutions/vault-secrets-cli` to Docker Hub.
+Multi-arch example:
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t mekomsolutions/vault-secrets-cli:latest \
+  --push .
+```

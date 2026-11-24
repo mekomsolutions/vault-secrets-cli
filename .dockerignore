@@ -1,0 +1,12 @@
+.git
+.github
+.gradle
+build
+node_modules
+spec
+*.md
+gradle*
+gradlew*
+build.gradle
+settings.gradle
+.gitignore

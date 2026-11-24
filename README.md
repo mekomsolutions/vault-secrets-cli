@@ -14,7 +14,9 @@ Pass Vault env vars into the container and mount the instance JSON plus an outpu
 export VAULT_ADDR=https://vault.example.com
 export VAULT_AUTH_METHOD=token
 export VAULT_TOKEN=hvs.your-token-here
+```
 
+```bash
 docker run --rm \
   -e VAULT_ADDR \
   -e VAULT_AUTH_METHOD \
@@ -22,7 +24,7 @@ docker run --rm \
   -v "$(pwd)/instances/dev/oz-c2c-dev.json:/instance.json:ro" \
   -v "$(pwd):/out" \
   mekomsolutions/vault-secrets-cli \
-  resolve --instance /instance.json --output /out/.env
+  resolve --instance /instance.json --output /out/secrets.env
 ```
 
 ### AppRole
@@ -33,7 +35,9 @@ export VAULT_AUTH_METHOD=approle
 export VAULT_ROLE_ID=...
 export VAULT_SECRET_ID=...
 # optional: export VAULT_APPROLE_PATH=approle
+```
 
+```bash
 docker run --rm \
   -e VAULT_ADDR \
   -e VAULT_AUTH_METHOD \
